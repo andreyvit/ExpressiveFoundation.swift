@@ -4,7 +4,7 @@ import Foundation
 // produces a block that captures self weakly from self + unbound method
 
 // () -> Void
-public func weakify<T: AnyObject>(object: T, block: (T) -> () -> Void) -> () -> Void {
+public func weakify<T: AnyObject>(object: T, _ block: (T) -> () -> Void) -> () -> Void {
     weak var weakObject = object
     return {
         if let strongObject = weakObject {
@@ -14,7 +14,7 @@ public func weakify<T: AnyObject>(object: T, block: (T) -> () -> Void) -> () -> 
 }
 
 // () -> R
-public func weakify<T: AnyObject, R>(object: T, block: (T) -> () -> R?) -> () -> R? {
+public func weakify<T: AnyObject, R>(object: T, _ block: (T) -> () -> R?) -> () -> R? {
     weak var weakObject = object
     return {
         if let strongObject = weakObject {
@@ -26,7 +26,7 @@ public func weakify<T: AnyObject, R>(object: T, block: (T) -> () -> R?) -> () ->
 }
 
 // (A1) -> Void
-public func weakify<T: AnyObject, A1>(object: T, block: (T) -> (A1) -> Void) -> (A1) -> Void {
+public func weakify<T: AnyObject, A1>(object: T, _ block: (T) -> (A1) -> Void) -> (A1) -> Void {
     weak var weakObject = object
     return { (a1) in
         if let strongObject = weakObject {
@@ -36,7 +36,7 @@ public func weakify<T: AnyObject, A1>(object: T, block: (T) -> (A1) -> Void) -> 
 }
 
 // (A1) -> R
-public func weakify<T: AnyObject, A1, R>(object: T, block: (T) -> (A1) -> R?) -> (A1) -> R? {
+public func weakify<T: AnyObject, A1, R>(object: T, _ block: (T) -> (A1) -> R?) -> (A1) -> R? {
     weak var weakObject = object
     return { (a1) in
         if let strongObject = weakObject {
@@ -48,7 +48,7 @@ public func weakify<T: AnyObject, A1, R>(object: T, block: (T) -> (A1) -> R?) ->
 }
 
 // (A1, A2) -> Void
-public func weakify<T: AnyObject, A2, A1>(object: T, block: (T) -> (A1, A2) -> Void) -> (A1, A2) -> Void {
+public func weakify<T: AnyObject, A2, A1>(object: T, _ block: (T) -> (A1, A2) -> Void) -> (A1, A2) -> Void {
     weak var weakObject = object
     return { (a1, a2) in
         if let strongObject = weakObject {
@@ -58,7 +58,7 @@ public func weakify<T: AnyObject, A2, A1>(object: T, block: (T) -> (A1, A2) -> V
 }
 
 // (A1, A2) -> R
-public func weakify<T: AnyObject, A1, A2, R>(object: T, block: (T) -> (A1, A2) -> R?) -> (A1, A2) -> R? {
+public func weakify<T: AnyObject, A1, A2, R>(object: T, _ block: (T) -> (A1, A2) -> R?) -> (A1, A2) -> R? {
     weak var weakObject = object
     return { (a1, a2) in
         if let strongObject = weakObject {
