@@ -19,6 +19,9 @@ public class ListenerStorage {
 
     private var listeners: [String: [EventListenerType]] = [:]
 
+    public init() {
+    }
+
     func handle(sender: EmitterType, _ payload: EventType) {
         let event = payload.dynamicType.eventName
         if let array = listeners[event] {

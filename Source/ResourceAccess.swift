@@ -2,7 +2,7 @@ import Foundation
 
 public extension NSJSONSerialization {
 
-    public func JSONObjectWithContentsOfURL(url: NSURL, options: NSJSONReadingOptions = []) throws -> AnyObject {
+    public class func JSONObjectWithContentsOfURL(url: NSURL, options: NSJSONReadingOptions = []) throws -> AnyObject {
         let data = try NSData(contentsOfURL: url, options: [])
         return try NSJSONSerialization.JSONObjectWithData(data, options: options)
     }
