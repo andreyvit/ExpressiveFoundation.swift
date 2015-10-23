@@ -57,7 +57,7 @@ public extension Observation {
 
 // MARK: -
 
-private class NotificationObserver: NSObject, ObserverType {
+private class NotificationObserver: NSObject, ListenerType {
     let name: String  // for debugging purposes
     let block: (NSNotification) -> Void
 

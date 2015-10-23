@@ -1,63 +1,10 @@
 import Foundation
 
-public protocol EmitterType: class {
-    var _listenerStorage: ListenerStorage { get }
-}
+
+// MARK: - Event
 
 public protocol EventType {
     static var eventName: String { get }
-}
-
-public protocol EventListenerType: class {
-    func handle(sender: EmitterType, _ payload: EventType)
-}
-
-public class ListenerStorage {
-
-    private static let globalEvents = ListenerStorage()
-    private static var globalEventsSpinlock = OS_SPINLOCK_INIT
-
-    private var listeners: [String: [EventListenerType]] = [:]
-
-    public init() {
-    }
-
-    func handle(sender: EmitterType, _ payload: EventType) {
-        let event = payload.dynamicType.eventName
-        if let array = listeners[event] {
-            for listener in array {
-                listener.handle(sender, payload)
-            }
-        }
-    }
-
-    func add(event: String, listener: EventListenerType) {
-        if var array = listeners[event] {
-            array.append(listener)
-            listeners[event] = array
-        } else {
-            listeners[event] = [listener]
-        }
-    }
-
-    func remove(event: String, listener: EventListenerType) {
-        if var array = listeners[event] {
-            let idx = array.indexOf { $0 === listener }
-            if let idx = idx {
-                array.removeAtIndex(idx)
-                listeners[event] = array
-            }
-        }
-    }
-
-}
-
-public extension EmitterType {
-
-    public func emit<Event: EventType>(event: Event) {
-        _listenerStorage.handle(self, event)
-    }
-
 }
 
 public extension EventType {
@@ -70,14 +17,157 @@ public extension EventType {
         return self.dynamicType.eventName
     }
 
-    public static func addListener(listener: EventListenerType) {
-        fatalError("Not implemented")
-//        OSSpinLockLock(&ListenerStorage.globalEventsSpinlock)
-//        OSSpinLockUnlock(&ListenerStorage.globalEventsSpinlock)
+}
+
+
+// MARK: - Emitter
+
+public protocol EmitterType: class {
+
+    var _listeners: EventListenerStorage { get set }
+
+}
+
+public extension EmitterType {
+
+    public func emit<Event: EventType>(event: Event) {
+        _listeners.emit(event)
     }
 
-    public static func removeListener(listener: EventListenerType) {
-        fatalError("Not implemented")
+    @warn_unused_result
+    public func subscribe<Event: EventType>(block: (Event) -> Void) -> ListenerType {
+        return BlockEventListener(self, block)
     }
 
+    @warn_unused_result
+    public func subscribe<Event: EventType, Target: AnyObject>(target: Target, _ block: (Target) -> (Event) -> Void) -> ListenerType {
+        return MethodEventListener(self, target, block)
+    }
+
+}
+
+
+// MARK: - Storage
+
+public struct EventListenerStorage {
+
+    private var subscriptionsByEventType: [ObjectIdentifier: [EventSubscription]] = [:]
+
+    public init() {
+    }
+
+    func emit<Event: EventType>(payload: Event) {
+        let oid = ObjectIdentifier(Event.self)
+        if let subscriptions = subscriptionsByEventType[oid] {
+            for subscription in subscriptions {
+                if subscription.listener?.eventType == Event.self {
+                    if let listener = subscription.listener {
+                        (listener as! EventListener<Event>).handle(payload)
+                    }
+                }
+            }
+        }
+    }
+
+    mutating func subscribe<Event: EventType>(listener: EventListener<Event>) {
+        let oid = ObjectIdentifier(Event.self)
+        let subscription = EventSubscription(listener)
+        if subscriptionsByEventType[oid] != nil {
+            subscriptionsByEventType[oid]!.append(subscription)
+        } else {
+            subscriptionsByEventType[oid] = [subscription]
+        }
+    }
+
+    mutating func unsubscribe<Event: EventType>(listener: EventListener<Event>) {
+        let oid = ObjectIdentifier(Event.self)
+        if let subscriptions = subscriptionsByEventType[oid] {
+            if let idx = subscriptions.indexOf({ $0.listener === listener }) {
+                subscriptionsByEventType[oid]!.removeAtIndex(idx)
+            }
+        }
+    }
+
+}
+
+private struct EventSubscription {
+
+    private weak var listener: BaseEventListener?
+
+    private init(_ listener: BaseEventListener) {
+        self.listener = listener
+    }
+
+}
+
+
+// MARK: - Listeners
+
+class BaseEventListener: ListenerType {
+
+    var eventType: EventType.Type {
+        fatalError()
+    }
+
+}
+
+class EventListener<Event: EventType>: BaseEventListener {
+
+    override var eventType: EventType.Type {
+        return Event.self
+    }
+
+    private weak var emitter: EmitterType?
+
+    init(_ emitter: EmitterType) {
+        self.emitter = emitter
+        super.init()
+        emitter._listeners.subscribe(self)
+    }
+
+    deinit {
+        if let emitter = emitter {
+            emitter._listeners.unsubscribe(self)
+        }
+    }
+
+    func handle(payload: Event) {
+        fatalError()
+    }
+
+}
+
+private final class BlockEventListener<Event: EventType>: EventListener<Event> {
+
+    private let block: (Event) -> Void
+
+    init(_ emitter: EmitterType, _ block: (Event) -> Void) {
+        self.block = block
+        super.init(emitter)
+    }
+
+    override func handle(payload: Event) {
+        block(payload)
+    }
+
+}
+
+private final class MethodEventListener<Event: EventType, Target: AnyObject>: EventListener<Event> {
+
+    private weak var target: Target?
+
+    private let block: (Target) -> (Event) -> Void
+
+    init(_ emitter: EmitterType, _ target: Target, _ block: (Target) -> (Event) -> Void) {
+        self.target = target
+        self.block = block
+        super.init(emitter)
+    }
+
+    override func handle(payload: Event) {
+        if let target = target {
+            block(target)(payload)
+        }
+    }
+    
 }
