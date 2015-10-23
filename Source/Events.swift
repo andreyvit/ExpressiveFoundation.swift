@@ -35,13 +35,18 @@ public extension EmitterType {
     }
 
     @warn_unused_result
-    public func subscribe<Event: EventType>(block: (Event) -> Void) -> ListenerType {
+    public func subscribe<Event: EventType>(block: (Event, Self) -> Void) -> ListenerType {
         return BlockEventListener(self, block)
     }
 
     @warn_unused_result
+    public func subscribe<Event: EventType, Target: AnyObject>(target: Target, _ block: (Target) -> (Event, Self) -> Void) -> ListenerType {
+        return Method2ArgEventListener(self, target, block)
+    }
+
+    @warn_unused_result
     public func subscribe<Event: EventType, Target: AnyObject>(target: Target, _ block: (Target) -> (Event) -> Void) -> ListenerType {
-        return MethodEventListener(self, target, block)
+        return Method1ArgEventListener(self, target, block)
     }
 
 }
@@ -137,22 +142,42 @@ class EventListener<Event: EventType>: BaseEventListener {
 
 }
 
-private final class BlockEventListener<Event: EventType>: EventListener<Event> {
+private final class BlockEventListener<Event: EventType, Emitter: EmitterType>: EventListener<Event> {
 
-    private let block: (Event) -> Void
+    private let block: (Event, Emitter) -> Void
 
-    init(_ emitter: EmitterType, _ block: (Event) -> Void) {
+    init(_ emitter: Emitter, _ block: (Event, Emitter) -> Void) {
         self.block = block
         super.init(emitter)
     }
 
     override func handle(payload: Event) {
-        block(payload)
+        block(payload, emitter as! Emitter)
     }
 
 }
 
-private final class MethodEventListener<Event: EventType, Target: AnyObject>: EventListener<Event> {
+private final class Method2ArgEventListener<Event: EventType, Emitter: EmitterType, Target: AnyObject>: EventListener<Event> {
+
+    private weak var target: Target?
+
+    private let block: (Target) -> (Event, Emitter) -> Void
+
+    init(_ emitter: Emitter, _ target: Target, _ block: (Target) -> (Event, Emitter) -> Void) {
+        self.target = target
+        self.block = block
+        super.init(emitter)
+    }
+
+    override func handle(payload: Event) {
+        if let target = target {
+            block(target)(payload, emitter as! Emitter)
+        }
+    }
+    
+}
+
+private final class Method1ArgEventListener<Event: EventType, Target: AnyObject>: EventListener<Event> {
 
     private weak var target: Target?
 
