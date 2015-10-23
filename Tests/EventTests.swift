@@ -6,7 +6,11 @@ class Foo: EmitterType {
     var _listeners = EventListenerStorage()
 
     struct DidChange: EventType {
-        let sender: Foo
+        let newValue: Int
+    }
+
+    struct DidBoo: EventTypeWithNotification {
+        static let notificationName = "FooDidBoo"
         let newValue: Int
     }
 
@@ -14,7 +18,8 @@ class Foo: EmitterType {
 
     func change() {
         ++value
-        emit(DidChange(sender: self, newValue: value))
+        emit(DidChange(newValue: value))
+        emit(DidBoo(newValue: value))
     }
 
 }
@@ -72,6 +77,16 @@ class ObservationTests: XCTestCase {
     func fooDidChange1(event: Foo.DidChange) {
         XCTAssertEqual(event.newValue, 2)
         e2.fulfill()
+    }
+
+    func testNotificationBridging() {
+        let foo = Foo()
+
+        expectationForNotification(Foo.DidBoo.notificationName, object: foo, handler: nil)
+
+        foo.change()
+
+        waitForExpectationsWithTimeout(0.1, handler: nil)
     }
 
 }

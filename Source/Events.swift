@@ -19,6 +19,17 @@ public extension EventType {
 
 }
 
+public protocol EventTypeWithNotification: EventType {
+    static var notificationName: String { get }
+    var notificationUserInfo: [String: AnyObject] { get }
+}
+
+public extension EventTypeWithNotification {
+    var notificationUserInfo: [String: AnyObject] {
+        return [:]
+    }
+}
+
 
 // MARK: - Emitter
 
@@ -32,6 +43,11 @@ public extension EmitterType {
 
     public func emit<Event: EventType>(event: Event) {
         _listeners.emit(event)
+    }
+
+    public func emit<Event: EventTypeWithNotification>(event: Event) {
+        _listeners.emit(event)
+        NSNotificationCenter.defaultCenter().postNotificationName(Event.notificationName, object: self, userInfo: event.notificationUserInfo)
     }
 
     @warn_unused_result
