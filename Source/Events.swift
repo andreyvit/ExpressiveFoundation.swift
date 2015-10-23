@@ -168,7 +168,10 @@ private final class BlockEventListener<Event: EventType, Emitter: EmitterType>: 
     }
 
     override func handle(payload: Event) {
-        block(payload, emitter as! Emitter)
+        // emitter might not be an instance of Emitter in case _listeners is delegated
+        if let emitter = emitter as? Emitter {
+            block(payload, emitter)
+        }
     }
 
 }
@@ -186,8 +189,9 @@ private final class Method2ArgEventListener<Event: EventType, Emitter: EmitterTy
     }
 
     override func handle(payload: Event) {
-        if let target = target {
-            block(target)(payload, emitter as! Emitter)
+        // emitter might not be an instance of Emitter in case _listeners is delegated
+        if let target = target, emitter = emitter as? Emitter {
+            block(target)(payload, emitter)
         }
     }
     
