@@ -37,17 +37,21 @@ public protocol EmitterType: class {
 
     var _listeners: EventListenerStorage { get set }
 
+    func emit(event: EventType)
+
 }
 
 public extension EmitterType {
 
-    public func emit<Event: EventType>(event: Event) {
-        _listeners.emit(event)
+    public func emit(event: EventType) {
+        _emitHere(event)
     }
 
-    public func emit<Event: EventTypeWithNotification>(event: Event) {
+    public func _emitHere(event: EventType) {
         _listeners.emit(event)
-        NSNotificationCenter.defaultCenter().postNotificationName(Event.notificationName, object: self, userInfo: event.notificationUserInfo)
+        if let eventWN = event as? EventTypeWithNotification {
+            NSNotificationCenter.defaultCenter().postNotificationName(eventWN.dynamicType.notificationName, object: self, userInfo: eventWN.notificationUserInfo)
+        }
     }
 
     @warn_unused_result
@@ -77,13 +81,14 @@ public struct EventListenerStorage {
     public init() {
     }
 
-    func emit<Event: EventType>(payload: Event) {
-        let oid = ObjectIdentifier(Event.self)
+    func emit(payload: EventType) {
+        let eventType = payload.dynamicType
+        let oid = ObjectIdentifier(eventType)
         if let subscriptions = subscriptionsByEventType[oid] {
             for subscription in subscriptions {
-                if subscription.listener?.eventType == Event.self {
-                    if let listener = subscription.listener {
-                        (listener as! EventListener<Event>).handle(payload)
+                if let listener = subscription.listener {
+                    if listener.eventType == eventType {
+                        listener.handle(payload)
                     }
                 }
             }
@@ -130,6 +135,10 @@ class BaseEventListener: ListenerType {
         fatalError()
     }
 
+    func handle(payload: EventType) {
+        fatalError()
+    }
+
 }
 
 class EventListener<Event: EventType>: BaseEventListener {
@@ -152,10 +161,6 @@ class EventListener<Event: EventType>: BaseEventListener {
         }
     }
 
-    func handle(payload: Event) {
-        fatalError()
-    }
-
 }
 
 private final class BlockEventListener<Event: EventType, Emitter: EmitterType>: EventListener<Event> {
@@ -167,10 +172,10 @@ private final class BlockEventListener<Event: EventType, Emitter: EmitterType>: 
         super.init(emitter)
     }
 
-    override func handle(payload: Event) {
+    override func handle(payload: EventType) {
         // emitter might not be an instance of Emitter in case _listeners is delegated
         if let emitter = emitter as? Emitter {
-            block(payload, emitter)
+            block(payload as! Event, emitter)
         }
     }
 
@@ -188,10 +193,10 @@ private final class Method2ArgEventListener<Event: EventType, Emitter: EmitterTy
         super.init(emitter)
     }
 
-    override func handle(payload: Event) {
+    override func handle(payload: EventType) {
         // emitter might not be an instance of Emitter in case _listeners is delegated
         if let target = target, emitter = emitter as? Emitter {
-            block(target)(payload, emitter)
+            block(target)(payload as! Event, emitter)
         }
     }
     
@@ -209,9 +214,9 @@ private final class Method1ArgEventListener<Event: EventType, Target: AnyObject>
         super.init(emitter)
     }
 
-    override func handle(payload: Event) {
+    override func handle(payload: EventType) {
         if let target = target {
-            block(target)(payload)
+            block(target)(payload as! Event)
         }
     }
     
