@@ -1,7 +1,7 @@
 import XCTest
 @testable import ExpressiveFoundation
 
-class Foo: EmitterType {
+class Foo: StdEmitterType {
 
     var _listeners = EventListenerStorage()
 

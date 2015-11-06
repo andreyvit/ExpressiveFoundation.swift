@@ -35,24 +35,15 @@ public extension EventTypeWithNotification {
 
 public protocol EmitterType: class {
 
-    var _listeners: EventListenerStorage { get set }
-
     func emit(event: EventType)
+
+    func subscribe(listener: EventListenerType)
+
+    func unsubscribe(listener: EventListenerType)
 
 }
 
 public extension EmitterType {
-
-    public func emit(event: EventType) {
-        _emitHere(event)
-    }
-
-    public func _emitHere(event: EventType) {
-        _listeners.emit(event)
-        if let eventWN = event as? EventTypeWithNotification {
-            NSNotificationCenter.defaultCenter().postNotificationName(eventWN.dynamicType.notificationName, object: self, userInfo: eventWN.notificationUserInfo)
-        }
-    }
 
     @warn_unused_result
     public func subscribe<Event: EventType>(block: (Event, Self) -> Void) -> ListenerType {
@@ -67,6 +58,39 @@ public extension EmitterType {
     @warn_unused_result
     public func subscribe<Event: EventType, Target: AnyObject>(target: Target, _ block: (Target) -> (Event) -> Void) -> ListenerType {
         return Method1ArgEventListener(self, target, block)
+    }
+
+    public func _emitAsNotification(event: EventType) {
+        if let eventWN = event as? EventTypeWithNotification {
+            NSNotificationCenter.defaultCenter().postNotificationName(eventWN.dynamicType.notificationName, object: self, userInfo: eventWN.notificationUserInfo)
+        }
+    }
+    
+}
+
+public protocol StdEmitterType: EmitterType {
+
+    var _listeners: EventListenerStorage { get set }
+
+}
+
+public extension StdEmitterType {
+
+    public func emit(event: EventType) {
+        _emitHere(event)
+    }
+
+    public func _emitHere(event: EventType) {
+        _listeners.emit(event)
+        _emitAsNotification(event)
+    }
+
+    public func subscribe(listener: EventListenerType) {
+        _listeners.subscribe(listener)
+    }
+
+    public func unsubscribe(listener: EventListenerType) {
+        _listeners.unsubscribe(listener)
     }
 
 }
@@ -95,8 +119,8 @@ public struct EventListenerStorage {
         }
     }
 
-    mutating func subscribe<Event: EventType>(listener: EventListener<Event>) {
-        let oid = ObjectIdentifier(Event.self)
+    mutating func subscribe(listener: EventListenerType) {
+        let oid = ObjectIdentifier(listener.eventType)
         let subscription = EventSubscription(listener)
         if subscriptionsByEventType[oid] != nil {
             subscriptionsByEventType[oid]!.append(subscription)
@@ -105,8 +129,8 @@ public struct EventListenerStorage {
         }
     }
 
-    mutating func unsubscribe<Event: EventType>(listener: EventListener<Event>) {
-        let oid = ObjectIdentifier(Event.self)
+    mutating func unsubscribe(listener: EventListenerType) {
+        let oid = ObjectIdentifier(listener.eventType)
         if let subscriptions = subscriptionsByEventType[oid] {
             if let idx = subscriptions.indexOf({ $0.listener === listener }) {
                 subscriptionsByEventType[oid]!.removeAtIndex(idx)
@@ -118,9 +142,9 @@ public struct EventListenerStorage {
 
 private struct EventSubscription {
 
-    private weak var listener: BaseEventListener?
+    private weak var listener: EventListenerType?
 
-    private init(_ listener: BaseEventListener) {
+    private init(_ listener: EventListenerType) {
         self.listener = listener
     }
 
@@ -129,21 +153,18 @@ private struct EventSubscription {
 
 // MARK: - Listeners
 
-class BaseEventListener: ListenerType {
+public protocol EventListenerType: ListenerType {
 
-    var eventType: EventType.Type {
-        fatalError()
-    }
+    var eventType: EventType.Type { get }
 
-    func handle(payload: EventType) {
-        fatalError()
-    }
+    func handle(payload: EventType)
 
 }
 
-class EventListener<Event: EventType>: BaseEventListener {
 
-    override var eventType: EventType.Type {
+private class BaseEventListener<Event: EventType>: EventListenerType {
+
+    var eventType: EventType.Type {
         return Event.self
     }
 
@@ -151,19 +172,22 @@ class EventListener<Event: EventType>: BaseEventListener {
 
     init(_ emitter: EmitterType) {
         self.emitter = emitter
-        super.init()
-        emitter._listeners.subscribe(self)
+        emitter.subscribe(self)
     }
 
     deinit {
         if let emitter = emitter {
-            emitter._listeners.unsubscribe(self)
+            emitter.unsubscribe(self)
         }
+    }
+
+    func handle(payload: EventType) {
+        fatalError("must override")
     }
 
 }
 
-private final class BlockEventListener<Event: EventType, Emitter: EmitterType>: EventListener<Event> {
+private final class BlockEventListener<Event: EventType, Emitter: EmitterType>: BaseEventListener<Event> {
 
     private let block: (Event, Emitter) -> Void
 
@@ -181,7 +205,7 @@ private final class BlockEventListener<Event: EventType, Emitter: EmitterType>: 
 
 }
 
-private final class Method2ArgEventListener<Event: EventType, Emitter: EmitterType, Target: AnyObject>: EventListener<Event> {
+private final class Method2ArgEventListener<Event: EventType, Emitter: EmitterType, Target: AnyObject>: BaseEventListener<Event> {
 
     private weak var target: Target?
 
@@ -202,7 +226,7 @@ private final class Method2ArgEventListener<Event: EventType, Emitter: EmitterTy
     
 }
 
-private final class Method1ArgEventListener<Event: EventType, Target: AnyObject>: EventListener<Event> {
+private final class Method1ArgEventListener<Event: EventType, Target: AnyObject>: BaseEventListener<Event> {
 
     private weak var target: Target?
 
