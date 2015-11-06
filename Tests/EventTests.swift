@@ -45,6 +45,18 @@ class ObservationTests: XCTestCase {
         waitForExpectationsWithTimeout(0.1, handler: nil)
     }
 
+    func testMethodListenerWith2ArgsSpecific() {
+        e2 = expectationWithDescription("Method")
+
+        let foo = Foo()
+        var o = Observation()
+
+        o += foo.subscribe(self, ObservationTests.fooDidChange2s)
+        foo.change()
+
+        waitForExpectationsWithTimeout(0.1, handler: nil)
+    }
+
     func testMethodListenerWith2Args() {
         e2 = expectationWithDescription("Method")
 
@@ -69,7 +81,12 @@ class ObservationTests: XCTestCase {
         waitForExpectationsWithTimeout(0.1, handler: nil)
     }
 
-    func fooDidChange2(event: Foo.DidChange, sender: Foo) {
+    func fooDidChange2s(event: Foo.DidChange, sender: Foo) {
+        XCTAssertEqual(event.newValue, 2)
+        e2.fulfill()
+    }
+
+    func fooDidChange2(event: Foo.DidChange, sender: EmitterType) {
         XCTAssertEqual(event.newValue, 2)
         e2.fulfill()
     }
