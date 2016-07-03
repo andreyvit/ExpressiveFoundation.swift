@@ -65,7 +65,7 @@ private class NotificationObserver: NSObject, ListenerType {
         self.name = name
         self.block = block
         super.init()
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "trigger:", name: name, object: object)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(trigger), name: name, object: object)
     }
 
     deinit {

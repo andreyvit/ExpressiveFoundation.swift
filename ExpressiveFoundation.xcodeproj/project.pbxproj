@@ -213,6 +213,7 @@
 				TargetAttributes = {
 					430F0D181BB0AC2200F8B30A = {
 						CreatedOnToolsVersion = 7.0;
+						LastSwiftMigration = 0800;
 					};
 					430F0D221BB0AC2200F8B30A = {
 						CreatedOnToolsVersion = 7.0;
@@ -399,6 +400,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 2.3;
 			};
 			name = Debug;
 		};
@@ -418,6 +420,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tarantsov.ExpressiveFoundation;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 2.3;
 			};
 			name = Release;
 		};

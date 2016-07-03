@@ -19,11 +19,12 @@ public class Delayed {
     }
 
     public func cancel() {
-        ++lastRequestId
+        lastRequestId += 1
     }
 
     public func perform(block: dispatch_block_t) {
-        let requestId = ++lastRequestId
+        lastRequestId += 1
+        let requestId = lastRequestId
 
         dispatch_async(dispatch_get_main_queue()) {
             if self.lastRequestId == requestId {
@@ -33,7 +34,8 @@ public class Delayed {
     }
 
     public func performAfterDelay(delay: NSTimeInterval, _ block: dispatch_block_t) {
-        let requestId = ++lastRequestId
+        lastRequestId += 1
+        let requestId = lastRequestId
 
         dispatch_after_s(delay, queue: dispatch_get_main_queue()) {
             if self.lastRequestId == requestId {

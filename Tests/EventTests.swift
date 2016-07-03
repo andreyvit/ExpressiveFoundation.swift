@@ -41,7 +41,7 @@ class Foo: StdEmitterType {
     var value: Int = 1
 
     func change() {
-        ++value
+        value += 1
         emit(DidChange(newValue: value))
         emit(DidBoo(newValue: value))
     }
